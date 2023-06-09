@@ -17,8 +17,6 @@ global.transporter = nodemailer.createTransport({
 require("./config/db/conn");
 
 // MIDDLEWARE
-// const userMiddleware = require("./middleware/checkUser");
-// app.use(userMiddleware.checkRole);
 
 //CORS
 const cors = require("cors");
@@ -28,10 +26,14 @@ const formidableMiddleware = require("express-formidable");
 
 // ROUTES
 const usersRoute = require("./routes/users");
+const articlesRoute = require("./routes/articles");
+const CategoriesRoute = require("./routes/categories");
 
 app.use(formidableMiddleware());
 
 app.use("/users", usersRoute);
+app.use("/articles", articlesRoute);
+app.use("/categories", CategoriesRoute);
 
 app.listen(port, () => {
   console.log(`API listening at http://localhost:${port}`);

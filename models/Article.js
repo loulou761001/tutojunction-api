@@ -32,11 +32,6 @@ const ArticleModel = mongoose.Schema({
     required: true,
     trim: true,
   },
-  lastname: {
-    type: String,
-    required: true,
-    trim: true,
-  },
   categories: [
     {
       category: { type: ObjectId, required: true },

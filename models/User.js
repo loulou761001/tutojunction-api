@@ -51,24 +51,18 @@ const UserModel = mongoose.Schema({
   },
   images: [
     {
-      image: { type: ObjectId, required: true },
+      type: ObjectId,
+      required: true,
     },
   ],
-  following: [
-    {
-      user: { type: ObjectId, required: true },
-    },
-  ],
+  following: [{ type: ObjectId, required: true }],
   followers: [
     {
-      user: { type: ObjectId, required: true },
+      type: ObjectId,
+      required: true,
     },
   ],
-  categories_followed: [
-    {
-      user: { type: ObjectId, required: true },
-    },
-  ],
+  categories_followed: [{ type: ObjectId, required: true }],
   reset_password_token: {
     type: String,
     default: "",

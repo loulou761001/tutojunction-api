@@ -22,9 +22,45 @@ module.exports = {
         if (data.role === "banned") {
           res.status(403).send();
         } else {
+          res.locals.user = data;
           next();
         }
       });
+    } catch (e) {
+      console.log(e);
+      res.status(401).send();
+    }
+  },
+  checkConfirmed: function (req, res, next) {
+    if (!req.headers.authorization) {
+      res.status(401).send();
+    }
+    req.headers.authorization = req.headers.authorization.split(" ")[1];
+    const token = req.headers.authorization;
+    // req.headers
+    console.log(token);
+    let userId;
+
+    try {
+      userId = jwt.verify(token, process.env.JWT_KEY).id;
+      console.log(jwt.verify(token, process.env.JWT_KEY));
+      console.log("userId", userId);
+      UserModel.findOne({ _id: userId })
+        .then((data) => {
+          console.log(data);
+          if (data.confirmed !== true) {
+            res.status(403).send();
+          } else if (data.role === "banned") {
+            res.status(403).send();
+          } else {
+            res.locals.user = data;
+            next();
+          }
+        })
+        .catch((e) => {
+          console.log(e);
+          res.status(500).send();
+        });
     } catch (e) {
       console.log(e);
       res.status(401).send();

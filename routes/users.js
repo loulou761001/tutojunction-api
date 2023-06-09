@@ -76,6 +76,15 @@ router.get("/findById/:id", async (req, res) => {
 router.get("/checkLoggedIn", userMiddleware.checkLoggedIn, async (req, res) => {
   res.send(["Logged in", req.headers.authorization]);
 });
+router.get("/me", userMiddleware.checkLoggedIn, async (req, res) => {
+  const sentObject = {
+    id: res.locals.user._id,
+    slug: res.locals.user.slug,
+    confirmed: res.locals.user.confirmed,
+    role: res.locals.user.role,
+  };
+  res.send({ user: sentObject });
+});
 
 router.post("/checkUsername", async (req, res) => {
   const currentSlug = slug(req.fields.username);
@@ -157,6 +166,61 @@ router.post("/login", async (req, res) => {
       res.status(404).send();
     }
   });
+});
+router.post("/follow", userMiddleware.checkConfirmed, async (req, res) => {
+  console.log("targetUser", req.fields);
+  console.log("logged in user", res.locals.user);
+  const sentInfo = req.fields;
+
+  try {
+    await UserModel.updateOne(
+      { slug: sentInfo.slug },
+      { $push: { followers: res.locals.user._id } }
+    );
+    await UserModel.updateOne(
+      { slug: res.locals.user.slug },
+      { $push: { following: res.locals.user._id } }
+    );
+  } catch (e) {
+    res.status(500).send();
+  }
+  // try {
+  //   UserModel.updateOne(
+  //     { _id: res.locals.user._id },
+  //     { $push: { following: res.locals.user } }
+  //   );
+  // } catch (e) {
+  //   res.status(500).send();
+  // }
+  res.send("success");
+});
+
+router.post("/unfollow", userMiddleware.checkConfirmed, async (req, res) => {
+  console.log("targetUser", req.fields);
+  console.log("logged in user", res.locals.user);
+  const sentInfo = req.fields;
+
+  try {
+    await UserModel.updateOne(
+      { slug: sentInfo.slug },
+      { $pull: { followers: res.locals.user._id } }
+    );
+    await UserModel.updateOne(
+      { slug: res.locals.user.slug },
+      { $pull: { following: res.locals.user._id } }
+    );
+  } catch (e) {
+    res.status(500).send();
+  }
+  // try {
+  //   UserModel.updateOne(
+  //     { _id: res.locals.user._id },
+  //     { $push: { following: res.locals.user } }
+  //   );
+  // } catch (e) {
+  //   res.status(500).send();
+  // }
+  res.send("success");
 });
 
 module.exports = router;

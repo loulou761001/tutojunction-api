@@ -26,11 +26,6 @@ const CategoryModel = mongoose.Schema({
   },
 
   parent: { type: ObjectId },
-  subs: [
-    {
-      category: { type: ObjectId },
-    },
-  ],
 });
 
 module.exports = category = mongoose.model("categories", CategoryModel);
