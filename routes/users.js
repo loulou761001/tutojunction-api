@@ -17,6 +17,7 @@ const UserModel = require("../models/User");
 // FUNCTIONS
 let slug = require("slug");
 const nodemailer = require("nodemailer");
+// const { checkLoggedIn } = require("../middleware/checkUser");
 
 // SEND A MAIL
 function sendMailConfirm(user) {
@@ -68,9 +69,12 @@ router.get("/", async (req, res) => {
   res.send(users);
 });
 
-router.get("/:id", async (req, res) => {
+router.get("/findById/:id", async (req, res) => {
   let user = await UserModel.findOne({ _id: req.params.id });
   res.send(user);
+});
+router.get("/checkLoggedIn", userMiddleware.checkLoggedIn, async (req, res) => {
+  res.send(["Logged in", req.headers.authorization]);
 });
 
 router.post("/checkUsername", async (req, res) => {
@@ -123,12 +127,19 @@ router.post("/register", async (req, res) => {
     .catch((err) => console.error(err.message));
 });
 
-router.post("/login", userMiddleware.checkRole, async (req, res) => {
+router.post("/login", async (req, res) => {
+  console.log(req.fields);
   const sentInfo = req.fields;
-  const user = await UserModel.findOne({ email: sentInfo.email });
+  let user;
+  try {
+    user = await UserModel.findOne({ email: sentInfo.email });
+  } catch (e) {
+    res.send(e);
+  }
+
   if (!user) {
     res.statusMessage = "No user found";
-    res.status(400).send();
+    res.status(404).send();
   }
 
   bcrypt.compare(sentInfo.password, user.password, (err, result) => {
@@ -143,7 +154,7 @@ router.post("/login", userMiddleware.checkRole, async (req, res) => {
       );
       res.send(token);
     } else {
-      res.status(400).send();
+      res.status(404).send();
     }
   });
 });
