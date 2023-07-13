@@ -26,7 +26,7 @@ router.get("/", async (req, res) => {
   res.send(categories);
 });
 
-router.get("/findById/:id", async (req, res) => {
+router.get("/findBySlug/:slug", async (req, res) => {
   let user = await UserModel.findOne({ _id: req.params.id });
   res.send(user);
 });
@@ -61,18 +61,6 @@ router.get("/getAllParents", async (req, res) => {
       res.status(500).send(err);
     });
   // res.send(parents);
-});
-
-router.post("/create", async (req, res) => {
-  let newCat = req.fields;
-  newCat.slug = slug(newCat.name);
-  CategoryModel.create(newCat)
-    .then(async (data) => {
-      res.send(data);
-    })
-    .catch((err) => {
-      res.status(500).send(err);
-    });
 });
 
 module.exports = router;

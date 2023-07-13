@@ -53,17 +53,82 @@ router.get("/", async (req, res) => {
 });
 
 router.get("/findById/:id", async (req, res) => {
-  let article = await ArticleModel.findOne({ _id: req.params.id });
-  res.send(article);
+  try {
+    let article = await ArticleModel.findOne({
+      $and: [
+        { _id: req.params.id },
+        { published_at: { $exists: true, $ne: null } },
+      ],
+    });
+    console.log(article);
+    if (article) {
+      res.send(article);
+    } else {
+      res.status(404).send();
+    }
+  } catch (e) {
+    console.error(e.message);
+    res.status(500).send(e);
+  }
 });
+
+router.get("/subscribed", userMiddleware.checkConfirmed, async (req, res) => {
+  const limit = req.query.limit;
+  const start = req.query.start;
+  const user = res.locals.user;
+  try {
+    let articles = await ArticleModel.find({
+      author: { $in: user.following },
+      published_at: { $exists: true },
+    })
+      .limit(limit ? limit : null)
+      .skip(start ? start : null)
+      .sort({ published_at: "desc" });
+    if (!articles) res.status(404).send();
+    res.send(articles);
+  } catch (e) {
+    res.status(500).send(e);
+  }
+});
+
+router.get(
+  "/byCategory/:category",
+  userMiddleware.checkConfirmed,
+  async (req, res) => {
+    const limit = req.query.limit;
+    const start = req.query.start;
+    const category = new objectId(req.params.category);
+    console.log("category", category);
+    // const truc =
+    try {
+      let articles = await ArticleModel.find({
+        categories: { $elemMatch: { $eq: category } },
+
+        published_at: { $exists: true },
+      })
+        .populate("categories", "name slug")
+        // .limit(limit ? limit : null)
+        // .skip(start ? start : null)
+        .sort({ published_at: "desc" });
+      if (!articles) res.status(404).send();
+      res.send(articles);
+    } catch (e) {
+      console.log(e);
+      res.status(500).send(e);
+    }
+  }
+);
+
+// POST -------------------------
 
 router.post("/create", userMiddleware.checkConfirmed, async (req, res) => {
   const article = req.fields;
   const user = res.locals.user;
-  console.log(res.locals.user);
   article.slug = slug(article.title);
   article.author = user._id;
   article.thumbnail = user._id;
+  article.content = cleanXss(article.content);
+  console.log(article);
   ArticleModel.create(article)
     .then((data) => {
       res.send(data);
@@ -74,36 +139,15 @@ router.post("/create", userMiddleware.checkConfirmed, async (req, res) => {
     });
 });
 
-router.post("/login", async (req, res) => {
-  console.log(req.fields);
-  const sentInfo = req.fields;
-  let article;
+router.put("/incrementViews/:id", async (req, res) => {
   try {
-    article = await ArticleModel.findOne({ email: sentInfo.email });
+    article = await ArticleModel.findOneAndUpdate(
+      { _id: req.params.id },
+      { $inc: { views: 1 } }
+    );
   } catch (e) {
     res.send(e);
   }
-
-  if (!article) {
-    res.statusMessage = "No article found";
-    res.status(404).send();
-  }
-
-  bcrypt.compare(sentInfo.password, article.password, (err, result) => {
-    if (result === true) {
-      if (article.banned) {
-        res.status(403).send;
-      }
-      const token = jwt.sign(
-        { id: article._id, role: article.role, confirmed: article.confirmed },
-        process.env.JWT_KEY,
-        { expiresIn: "24h" }
-      );
-      res.send(token);
-    } else {
-      res.status(404).send();
-    }
-  });
 });
 
 module.exports = router;

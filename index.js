@@ -2,19 +2,14 @@ const express = require("express");
 const app = express();
 const port = 1337;
 const nodemailer = require("nodemailer");
-
 // GLOBAL VARIABLES
-global.siteUrl = "http://localhost:3000/";
-global.transporter = nodemailer.createTransport({
-  service: "gmail",
-  auth: {
-    user: "TutoJunction@gmail.com",
-    pass: "xnqd pmpd lcxw ywjv",
-  },
-});
+require("./global");
 
 //Connection to mongoDB
 require("./config/db/conn");
+
+//Connection to Cloudinary
+require("./config/cloudinary");
 
 // MIDDLEWARE
 
@@ -28,12 +23,14 @@ const formidableMiddleware = require("express-formidable");
 const usersRoute = require("./routes/users");
 const articlesRoute = require("./routes/articles");
 const CategoriesRoute = require("./routes/categories");
+const FilesRoute = require("./routes/files");
 
 app.use(formidableMiddleware());
 
 app.use("/users", usersRoute);
 app.use("/articles", articlesRoute);
 app.use("/categories", CategoriesRoute);
+app.use("/files", FilesRoute);
 
 app.listen(port, () => {
   console.log(`API listening at http://localhost:${port}`);

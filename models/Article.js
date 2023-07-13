@@ -32,11 +32,8 @@ const ArticleModel = mongoose.Schema({
     required: true,
     trim: true,
   },
-  categories: [
-    {
-      category: { type: ObjectId, required: true },
-    },
-  ],
+  categories: [{ type: ObjectId, ref: "categories" }],
+  tags: [{ type: String }],
   liked_by: [
     {
       user: { type: ObjectId },

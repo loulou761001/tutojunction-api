@@ -68,6 +68,16 @@ router.get("/", async (req, res) => {
   let users = await UserModel.find();
   res.send(users);
 });
+router.get("/bySubscribers", async (req, res) => {
+  let users = await UserModel.find().sort({ followers: "desc" }).limit(7);
+  res.send(users);
+});
+router.get("/recommended", userMiddleware.checkLoggedIn, async (req, res) => {
+  let users = await UserModel.find({ _id: { $ne: res.locals.user._id } })
+    .sort({ followers: "desc" })
+    .limit(6);
+  res.send(users);
+});
 
 router.get("/findById/:id", async (req, res) => {
   let user = await UserModel.findOne({ _id: req.params.id });
