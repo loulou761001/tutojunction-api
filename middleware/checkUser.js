@@ -17,15 +17,21 @@ module.exports = {
     try {
       userId = jwt.verify(token, process.env.JWT_KEY).id;
       console.log("userId", userId);
-      UserModel.findOne({ _id: userId }).then((data) => {
-        console.log(data);
-        if (data.role === "banned") {
-          res.status(403).send();
-        } else {
-          res.locals.user = data;
-          next();
-        }
-      });
+      UserModel.findOne({ _id: userId })
+        .populate("avatar")
+        .then((data) => {
+          console.log(data);
+          if (data) {
+            if (data.role === "banned") {
+              res.status(403).send();
+            } else {
+              res.locals.user = data;
+              next();
+            }
+          } else {
+            res.status(404).send();
+          }
+        });
     } catch (e) {
       console.log(e);
       res.status(401).send();

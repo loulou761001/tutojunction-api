@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 
 const { ObjectId } = require("mongodb");
 
-const FileModel = mongoose.Schema({
+const CommentModel = mongoose.Schema({
   created_at: {
     type: Date,
     required: true,
@@ -13,23 +13,18 @@ const FileModel = mongoose.Schema({
     required: true,
     default: new Date(),
   },
-  uploader: {
+  content: {
+    type: String,
+    required: true,
+  },
+  author: {
     type: ObjectId,
     required: true,
+    ref: "users",
+    autopopulate: true,
   },
-  url: {
-    type: String,
-    required: true,
-  },
-  public_id: {
-    type: String,
-    required: true,
-  },
-  category: {
-    type: String,
-    required: true,
-    trim: true,
-  },
+  liked_by: [{ type: ObjectId, ref: "users" }],
+  article: { type: ObjectId, ref: "articles" },
 });
 
-module.exports = file = mongoose.model("files", FileModel);
+module.exports = comment = mongoose.model("comments", CommentModel);

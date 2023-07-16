@@ -49,20 +49,22 @@ const UserModel = mongoose.Schema({
     required: true,
     default: "user",
   },
-  images: [
-    {
-      type: ObjectId,
-      required: true,
-    },
-  ],
-  following: [{ type: ObjectId, required: true }],
+  avatar: {
+    type: ObjectId,
+    required: false,
+    ref: "files",
+    autopopulate: true,
+  },
+
+  following: [{ type: ObjectId, required: true, ref: "users" }],
   followers: [
     {
       type: ObjectId,
       required: true,
+      ref: "users",
     },
   ],
-  categories_followed: [{ type: ObjectId, required: true }],
+  categories_followed: [{ type: ObjectId, required: true, ref: "categories" }],
   reset_password_token: {
     type: String,
     default: "",
@@ -86,11 +88,8 @@ const UserModel = mongoose.Schema({
     required: true,
     default: false,
   },
-  articles: [
-    {
-      article: { type: ObjectId, required: true },
-    },
-  ],
+  articles: [{ type: ObjectId, required: true, ref: "articles" }],
+  likes: [{ type: ObjectId, required: true }],
 });
 
 UserModel.statics.isEmailTaken = async function (email) {

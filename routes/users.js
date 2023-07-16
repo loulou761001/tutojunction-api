@@ -17,6 +17,7 @@ const UserModel = require("../models/User");
 // FUNCTIONS
 let slug = require("slug");
 const nodemailer = require("nodemailer");
+const { ObjectId } = require("mongodb");
 // const { checkLoggedIn } = require("../middleware/checkUser");
 
 // SEND A MAIL
@@ -43,7 +44,7 @@ function sendMailConfirm(user) {
   transporter
     .sendMail(mailOptions)
     .then((data) => {
-      console.log("email sent ", data);
+      console.log("email sent ");
     })
     .catch((err) => {
       console.log(err);
@@ -73,14 +74,102 @@ router.get("/bySubscribers", async (req, res) => {
   res.send(users);
 });
 router.get("/recommended", userMiddleware.checkLoggedIn, async (req, res) => {
-  let users = await UserModel.find({ _id: { $ne: res.locals.user._id } })
-    .sort({ followers: "desc" })
-    .limit(6);
-  res.send(users);
+  let categories_followed;
+  let sort;
+  if (!res.locals.user.categories_followed.length) {
+    console.log("no length");
+    categories_followed = { $exists: true };
+    sort = {
+      article_count: "desc",
+      _id: "desc",
+    };
+  } else {
+    categories_followed = {
+      $ne: [],
+      $in: res.locals.user.categories_followed,
+    };
+    sort = {
+      common_count: "desc",
+      article_count: "desc",
+      _id: "desc",
+    };
+  }
+  try {
+    let users = await UserModel.find(
+      {
+        banned: { $ne: true },
+        _id: { $ne: res.locals.user._id, $nin: res.locals.user.following },
+        categories_followed: categories_followed,
+        articles: { $ne: [] },
+      },
+      {
+        username: 1,
+        slug: 1,
+        avatar: 1,
+        followers: 1,
+        followers_count: { $size: "$followers" },
+        article_count: { $size: "$articles" },
+        common: {
+          $setIntersection: [
+            "$categories_followed",
+            res.locals.user.categories_followed,
+          ],
+        },
+        common_count: {
+          $size: {
+            $setIntersection: [
+              "$categories_followed",
+              res.locals.user.categories_followed,
+            ],
+          },
+        },
+      }
+    )
+      .populate("avatar")
+      .populate("categories_followed")
+      .sort(sort)
+      .limit(6);
+    console.log(users);
+    res.send(users);
+  } catch (e) {
+    console.error(e);
+    res.status(500).send;
+  }
 });
 
 router.get("/findById/:id", async (req, res) => {
-  let user = await UserModel.findOne({ _id: req.params.id });
+  console.log(req.params);
+  let user = await UserModel.findOne({ _id: req.params.id }, { password: 0 })
+    .populate("avatar")
+    .populate({
+      path: "articles",
+
+      populate: [
+        {
+          path: "thumbnail",
+        },
+        {
+          path: "categories",
+        },
+        {
+          path: "author",
+          populate: { path: "avatar" },
+        },
+      ],
+    })
+    .populate({
+      path: "following",
+      populate: {
+        path: "avatar",
+      },
+    })
+    .populate({
+      path: "followers",
+      populate: {
+        path: "avatar",
+      },
+    })
+    .populate("categories_followed");
   res.send(user);
 });
 router.get("/checkLoggedIn", userMiddleware.checkLoggedIn, async (req, res) => {
@@ -90,8 +179,14 @@ router.get("/me", userMiddleware.checkLoggedIn, async (req, res) => {
   const sentObject = {
     id: res.locals.user._id,
     slug: res.locals.user.slug,
+    username: res.locals.user.username,
     confirmed: res.locals.user.confirmed,
     role: res.locals.user.role,
+    email: res.locals.user.email,
+    avatar: res.locals.user.avatar,
+    categories_followed: res.locals.user.categories_followed,
+    banned: res.locals.user.banned,
+    followers: res.locals.user.followers,
   };
   res.send({ user: sentObject });
 });
@@ -121,9 +216,74 @@ router.put("/confirm/:id", async (req, res) => {
   );
   res.send(user);
 });
+router.put("/editProfile", userMiddleware.checkLoggedIn, async (req, res) => {
+  const user = res.locals.user;
+  const updatedFields = req.fields;
+  if (updatedFields.username) {
+    updatedFields.slug = slug(updatedFields.username);
+  }
+  if (updatedFields.email) {
+    updatedFields.confirmed = false;
+    updatedFields.confirmation_code = updatedFields.slug + makeToken(12);
+    updatedFields.confirmation_code_time = new Date();
+  }
+  await UserModel.findOneAndUpdate(
+    { _id: user._id },
+    {
+      $set: updatedFields,
+    },
+    { returnDocument: "after" }
+  )
+    .then((userUpdate) => {
+      console.log("userUpdate", userUpdate);
+      if (updatedFields.email) {
+        sendMailConfirm(userUpdate);
+        res.send(userUpdate);
+      } else {
+        res.send(userUpdate);
+      }
+    })
+    .catch((e) => {
+      console.log(e);
+      res.status(500).send(e);
+    });
+});
+router.put("/followCat", userMiddleware.checkConfirmed, async (req, res) => {
+  const user = res.locals.user;
+  const category = new ObjectId(req.fields.category);
+  try {
+    let userUpdate = await UserModel.updateOne(
+      { _id: user._id },
+      {
+        $push: { categories_followed: category },
+      }
+    );
+    res.send(userUpdate);
+  } catch (e) {
+    console.log(e);
+    res.status(500).send(e);
+  }
+});
+router.put("/unfollowCat", userMiddleware.checkConfirmed, async (req, res) => {
+  const user = res.locals.user;
+  const category = new ObjectId(req.fields.category);
+  try {
+    let userUpdate = await UserModel.updateOne(
+      { _id: user._id },
+      {
+        $pull: { categories_followed: category },
+      }
+    );
+    res.send(userUpdate);
+  } catch (e) {
+    console.log(e);
+    res.status(500).send(e);
+  }
+});
 
 router.post("/register", async (req, res) => {
   const user = req.fields;
+  user.likes = [];
   user.slug = slug(user.username);
   user.confirmation_code = user.slug + makeToken(12);
   bcrypt
@@ -144,6 +304,20 @@ router.post("/register", async (req, res) => {
       });
     })
     .catch((err) => console.error(err.message));
+});
+router.get("/resendMail", userMiddleware.checkLoggedIn, async (req, res) => {
+  const user = res.locals.user;
+  user.confirmation_code = user.slug + makeToken(12);
+  UserModel.updateOne(
+    { _id: user._id },
+    {
+      confirmation_code: user.confirmation_code,
+      confirmation_code_time: new Date(),
+    }
+  ).then((data) => {
+    sendMailConfirm(user);
+    res.send(data);
+  });
 });
 
 router.post("/login", async (req, res) => {
@@ -184,25 +358,17 @@ router.post("/follow", userMiddleware.checkConfirmed, async (req, res) => {
 
   try {
     await UserModel.updateOne(
-      { slug: sentInfo.slug },
+      { _id: sentInfo._id },
       { $push: { followers: res.locals.user._id } }
     );
     await UserModel.updateOne(
-      { slug: res.locals.user.slug },
-      { $push: { following: res.locals.user._id } }
+      { _id: res.locals.user._id },
+      { $push: { following: sentInfo._id } }
     );
+    res.status(200).send();
   } catch (e) {
     res.status(500).send();
   }
-  // try {
-  //   UserModel.updateOne(
-  //     { _id: res.locals.user._id },
-  //     { $push: { following: res.locals.user } }
-  //   );
-  // } catch (e) {
-  //   res.status(500).send();
-  // }
-  res.send("success");
 });
 
 router.post("/unfollow", userMiddleware.checkConfirmed, async (req, res) => {
@@ -212,12 +378,12 @@ router.post("/unfollow", userMiddleware.checkConfirmed, async (req, res) => {
 
   try {
     await UserModel.updateOne(
-      { slug: sentInfo.slug },
+      { _id: sentInfo._id },
       { $pull: { followers: res.locals.user._id } }
     );
     await UserModel.updateOne(
-      { slug: res.locals.user.slug },
-      { $pull: { following: res.locals.user._id } }
+      { _id: res.locals.user._id },
+      { $pull: { following: sentInfo._id } }
     );
   } catch (e) {
     res.status(500).send();

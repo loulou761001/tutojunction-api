@@ -25,22 +25,9 @@ router.get("/", async (req, res) => {
   let categories = await CategoryModel.find();
   res.send(categories);
 });
-
-router.get("/findBySlug/:slug", async (req, res) => {
-  let user = await UserModel.findOne({ _id: req.params.id });
-  res.send(user);
-});
-router.get("/checkLoggedIn", userMiddleware.checkLoggedIn, async (req, res) => {
-  res.send(["Logged in", req.headers.authorization]);
-});
-router.get("/me", userMiddleware.checkLoggedIn, async (req, res) => {
-  const sentObject = {
-    id: res.locals.user._id,
-    slug: res.locals.user.slug,
-    confirmed: res.locals.user.confirmed,
-    role: res.locals.user.role,
-  };
-  res.send({ user: sentObject });
+router.get("/getSubs/:id", async (req, res) => {
+  let categories = await CategoryModel.find({ parent: req.params.id });
+  res.send(categories);
 });
 
 // POST
