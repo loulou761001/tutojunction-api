@@ -17,6 +17,11 @@ const ArticleModel = mongoose.Schema({
     required: true,
     default: new Date(),
   },
+  featured: {
+    type: Boolean,
+    required: true,
+    default: false,
+  },
   title: {
     type: String,
     required: true,

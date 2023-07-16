@@ -20,7 +20,7 @@ const ArticleModel = require("../models/Article");
 const ModmailModel = require("../models/ModMessage");
 const { ObjectId } = require("mongodb");
 
-router.post("/", userMiddleware.checkConfirmed, async (req, res) => {
+router.post("/", userMiddleware.checkLoggedIn, async (req, res) => {
   const newMail = req.fields;
   console.log(newMail);
   try {

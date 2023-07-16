@@ -113,6 +113,23 @@ router.get("/latest", async (req, res) => {
     .sort({ published_at: "desc" });
   res.send(articles);
 });
+router.get("/featured", async (req, res) => {
+  let limit = req.fields.limit;
+  let skip = req.fields.skip;
+  let category = req.fields.category;
+  let categorySub = req.fields.categorySub;
+  let articles = await ArticleModel.find({
+    published_at: { $exists: true, $ne: null },
+    featured: { $eq: true },
+  })
+    .limit(limit)
+    .skip(skip)
+    .populate("categories")
+    .populate("thumbnail")
+    .populate({ path: "author", populate: "avatar" })
+    .sort({ published_at: "desc" });
+  res.send(articles);
+});
 router.get("/byLikes", async (req, res) => {
   let limit = req.fields.limit;
   let skip = req.fields.skip;
