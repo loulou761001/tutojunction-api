@@ -73,6 +73,7 @@ module.exports = {
     }
   },
   checkModerator: function (req, res, next) {
+    console.log(req.headers);
     req.headers.authorization = req.headers.authorization.split(" ")[1];
     const token = req.headers.authorization;
     // req.headers
@@ -82,14 +83,26 @@ module.exports = {
     let userId;
     try {
       userId = jwt.verify(token, process.env.JWT_KEY).id;
-      UserModel.findOne({ _id: userId }).then((data) => {
-        console.log(data);
-        if (data.role !== "admin" && data.role !== "moderator") {
-          res.status(403).send();
-        } else {
-          next();
-        }
-      });
+      console.log(jwt.verify(token, process.env.JWT_KEY));
+      console.log("userId", userId);
+      UserModel.findOne({ _id: userId })
+        .then((data) => {
+          console.log(data);
+          if (data.confirmed !== true) {
+            res.status(403).send();
+          } else if (data.role === "banned") {
+            res.status(403).send();
+          } else if (data.role !== "moderator" || data.role !== "admin") {
+            res.status(403).send();
+          } else {
+            res.locals.user = data;
+            next();
+          }
+        })
+        .catch((e) => {
+          console.log(e);
+          res.status(500).send();
+        });
     } catch (e) {
       console.log(e);
       res.status(401).send();
