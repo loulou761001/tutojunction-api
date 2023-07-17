@@ -50,7 +50,7 @@ router.post("/", userMiddleware.checkConfirmed, async (req, res) => {
 router.post("/profile", userMiddleware.checkConfirmed, async (req, res) => {
   const options = {
     use_filename: true,
-    unique_filename: false,
+    unique_filename: true,
     overwrite: false,
   };
   const imagePath = req.files.image.path;
@@ -76,6 +76,7 @@ router.post("/profile", userMiddleware.checkConfirmed, async (req, res) => {
     }
   } catch (error) {
     console.error(error);
+    res.status(500).send(error);
   }
 });
 

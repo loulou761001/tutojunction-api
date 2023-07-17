@@ -31,13 +31,16 @@ router.get("/getSubs/:id", async (req, res) => {
 });
 
 // POST
-
-router.post("/checkUsername", async (req, res) => {
-  const currentSlug = slug(req.fields.username);
-  let user = await UserModel.findOne({
-    $or: [{ username: req.fields.username }, { slug: currentSlug }],
-  });
-  res.send(user == null);
+router.post("/create", userMiddleware.checkModerator, async (req, res) => {
+  let newCat = req.fields;
+  newCat.slug = slug(newCat.name);
+  CategoryModel.create(newCat)
+    .then(async (data) => {
+      res.send(data);
+    })
+    .catch((err) => {
+      res.status(500).send(err);
+    });
 });
 
 router.get("/getAllParents", async (req, res) => {
