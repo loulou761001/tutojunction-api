@@ -92,7 +92,7 @@ module.exports = {
             res.status(403).send();
           } else if (data.role === "banned") {
             res.status(403).send();
-          } else if (data.role !== "moderator" || data.role !== "admin") {
+          } else if (data.role !== "moderator" && data.role !== "admin") {
             res.status(403).send();
           } else {
             res.locals.user = data;
