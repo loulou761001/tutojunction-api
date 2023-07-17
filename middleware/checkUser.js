@@ -73,7 +73,8 @@ module.exports = {
     }
   },
   checkModerator: function (req, res, next) {
-    const token = req.headers.authorization.split(" ")[1];
+    req.headers.authorization = req.headers.authorization.split(" ")[1];
+    const token = req.headers.authorization;
     // req.headers
     console.log(token);
     console.log(jwt.verify(token, process.env.JWT_KEY));
