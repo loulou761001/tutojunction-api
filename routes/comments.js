@@ -41,14 +41,27 @@ router.post("/", userMiddleware.checkConfirmed, async (req, res) => {
 // GET BY ARTICLE
 router.get("/:article", async (req, res) => {
   const article = req.params.article;
-  const limit = req.query.limit;
+  const limit = 10;
   const skip = req.query.skip;
   console.log("article", article);
-  await FileModel.find({ article: new ObjectId(article) })
+  await CommentModel.find({ article: new ObjectId(article) })
 
     .skip(skip)
     .limit(limit)
     .sort({ created_at: "desc", _id: "desc" })
+    .populate({ path: "author", populate: "avatar" })
+    .then((data) => {
+      res.send(data);
+    })
+    .catch((err) => {
+      console.error(err);
+      res.status(500).send(err);
+    });
+});
+
+router.delete("/:id", async (req, res) => {
+  const id = req.params.id;
+  await CommentModel.deleteOne({ _id: new ObjectId(id) })
     .then((data) => {
       res.send(data);
     })

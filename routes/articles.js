@@ -16,6 +16,8 @@ const ArticleModel = require("../models/Article");
 // FUNCTIONS
 let slug = require("slug");
 const { ObjectId } = require("mongodb");
+const CommentModel = require("../models/Comment");
+const CategoryModel = require("../models/Category");
 
 // SEND A MAIL
 function sendMailNewArticle(article, user) {
@@ -113,19 +115,31 @@ router.get("/latest", async (req, res) => {
     .sort({ published_at: "desc" });
   res.send(articles);
 });
-router.get("/admin/latest", userMiddleware.checkModerator, async (req, res) => {
-  let limit = req.fields.limit;
-  let skip = req.fields.skip;
-  let category = req.fields.category;
-  let categorySub = req.fields.categorySub;
-  let articles = await ArticleModel.find()
-    .limit(limit)
-    .skip(skip)
-    .populate("categories")
-    .populate("thumbnail")
-    .populate({ path: "author", populate: "avatar" })
-    .sort({ published_at: "desc" });
-  res.send(articles);
+router.get("/admin/", userMiddleware.checkModerator, async (req, res) => {
+  let limit = 16;
+  let skip = req.query.skip;
+  const filter = {};
+  let unpublished = req.query.unpublished;
+  if (unpublished) {
+    filter.published_at = {
+      $not: {
+        $type: 9,
+      },
+    };
+  }
+  try {
+    let articles = await ArticleModel.find(filter)
+      .limit(limit)
+      .skip(skip)
+      .populate("categories")
+      .populate("thumbnail")
+      .populate({ path: "author", populate: "avatar" })
+      .sort({ published_at: "desc" });
+    res.send(articles);
+  } catch (e) {
+    console.log(e);
+    res.status(500).send();
+  }
 });
 router.get("/featured", async (req, res) => {
   let limit = req.fields.limit;
@@ -153,6 +167,8 @@ router.get("/byLikes", async (req, res) => {
       likes_count: { $size: "$liked_by" },
       title: 1,
       liked_by: 1,
+      featured: 1,
+      time_required: 1,
       published_at: 1,
     }
   )
@@ -178,11 +194,32 @@ router.get("/byViews", async (req, res) => {
     .sort({ views: "desc", published_at: "desc" });
   res.send(articles);
 });
+router.get("/byTime", async (req, res) => {
+  let limit = req.fields.limit;
+  let skip = req.fields.skip;
+  let articles = await ArticleModel.find({
+    published_at: { $exists: true, $ne: null },
+  })
+    .limit(limit)
+    .skip(skip)
+    .populate("categories")
+    .populate("thumbnail")
+    .populate({ path: "author", populate: "avatar" })
+    .set({ test: "$time_required.0" })
+    .sort({
+      "time_required.0": "asc",
+      "time_required.1": "asc",
+      published_at: "desc",
+    });
+  res.send(articles);
+});
 
 router.get("/findById/:id", async (req, res) => {
+  const skip = req.query.skip;
   let author = null;
+  console.log(req.query.author);
   if (req.query.author) {
-    author = new ObjectId(req.query.author);
+    author = new ObjectId(req.query.author._id);
   }
   try {
     let article = await ArticleModel.findOne({
@@ -198,16 +235,6 @@ router.get("/findById/:id", async (req, res) => {
     })
       .populate("categories", "name slug")
       .populate("thumbnail", "url")
-      .populate({
-        path: "comments",
-        options: { sort: { published_at: "desc" }, limit: 10 },
-        populate: {
-          path: "author",
-          populate: {
-            path: "avatar",
-          },
-        },
-      })
       .populate({
         path: "author",
         populate: {
@@ -225,6 +252,26 @@ router.get("/findById/:id", async (req, res) => {
     res.status(500).send(e);
   }
 });
+router.get(
+  "/admin/main_infos",
+  userMiddleware.checkModerator,
+  async (req, res) => {
+    try {
+      const infos = {};
+      infos.articles = await ArticleModel.count();
+      infos.categories = await CategoryModel.count();
+      infos.users = await UserModel.count();
+      infos.bannedUsers = await UserModel.count({ banned: true });
+      infos.writerUsers = await UserModel.count({ role: "writer" });
+      infos.comments = await CommentModel.count();
+
+      res.send(infos);
+    } catch (e) {
+      console.error(e.message);
+      res.status(500).send(e);
+    }
+  }
+);
 router.get("/findByUserLikes/:id", async (req, res) => {
   const id = new ObjectId(req.params.id);
   try {
@@ -278,6 +325,7 @@ router.delete(
       const user = await UserModel.findOne({
         _id: new ObjectId(req.params.userId),
       });
+      await CommentModel.deleteMany({ article: new ObjectId(req.params.id) });
       console.log("user", user);
       await sendMailDelete(article, user);
       res.send(article);
@@ -669,7 +717,7 @@ router.get("/incrementViews/:id", async (req, res) => {
     res.send(e);
   }
 });
-router.put("/like/:id", async (req, res) => {
+router.put("/like/:id", userMiddleware.checkConfirmed, async (req, res) => {
   const user = req.fields.user;
   try {
     const article = await ArticleModel.updateOne(
@@ -689,7 +737,7 @@ router.put("/like/:id", async (req, res) => {
     res.send(e);
   }
 });
-router.put("/unlike/:id", async (req, res) => {
+router.put("/unlike/:id", userMiddleware.checkConfirmed, async (req, res) => {
   const user = req.fields.user;
   try {
     const article = await ArticleModel.updateOne(
@@ -705,5 +753,34 @@ router.put("/unlike/:id", async (req, res) => {
     res.send(e);
   }
 });
+
+router.put("/feature/:id", userMiddleware.checkModerator, async (req, res) => {
+  const user = req.fields.user;
+  try {
+    const article = await ArticleModel.updateOne(
+      { _id: req.params.id },
+      { featured: true }
+    );
+    res.send(article);
+  } catch (e) {
+    res.status(500).send(e);
+  }
+});
+router.put(
+  "/unfeature/:id",
+  userMiddleware.checkModerator,
+  async (req, res) => {
+    const user = req.fields.user;
+    try {
+      const article = await ArticleModel.updateOne(
+        { _id: req.params.id },
+        { featured: false }
+      );
+      res.send(article);
+    } catch (e) {
+      res.status(500).send(e);
+    }
+  }
+);
 
 module.exports = router;

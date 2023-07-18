@@ -36,6 +36,13 @@ const ArticleModel = mongoose.Schema({
     text: true,
     index: true,
   },
+  time_required: [
+    {
+      type: Number,
+      required: true,
+      default: null,
+    },
+  ],
   author: {
     type: ObjectId,
     required: true,
