@@ -50,6 +50,32 @@ function sendMailConfirm(user) {
       console.log(err);
     });
 }
+function sendMailBan(user, message) {
+  const mailOptions = {
+    from: "TutoJunction@gmail.com",
+    to: user.email,
+    subject: "Tu as été banni",
+    text:
+      "Bonjour " +
+      user.username +
+      ", L'équipe de TutoJunction a pris la décision de bannir ton compte, pour la raison suivante : " +
+      message,
+    html:
+      "<p>Bonjour " +
+      user.username +
+      ",</p><p>, L'équipe de TutoJunction a pris la décision de bannir ton compte, pour la raison suivante :  <p style='font-size: 16px;font-weight: bold'>'" +
+      message +
+      "'.</p>",
+  };
+  transporter
+    .sendMail(mailOptions)
+    .then((data) => {
+      console.log("email sent ");
+    })
+    .catch((err) => {
+      console.log(err);
+    });
+}
 
 // GENERATES A RANDOM TOKEN
 function makeToken(length) {
@@ -106,6 +132,7 @@ router.get("/recommended", userMiddleware.checkLoggedIn, async (req, res) => {
         username: 1,
         slug: 1,
         avatar: 1,
+        role: 1,
         followers: 1,
         followers_count: { $size: "$followers" },
         article_count: { $size: "$articles" },
@@ -397,6 +424,35 @@ router.post("/unfollow", userMiddleware.checkConfirmed, async (req, res) => {
   //   res.status(500).send();
   // }
   res.send("success");
+});
+
+router.post("/ban", userMiddleware.checkModerator, async (req, res) => {
+  console.log("targetUser", req.fields);
+  console.log("logged in user", res.locals.user);
+  const user = req.fields.user;
+  const message = req.fields.message;
+
+  try {
+    await UserModel.updateOne({ _id: user._id }, { banned: true });
+    await sendMailBan(user, message);
+    res.status(200).send();
+  } catch (e) {
+    res.status(500).send();
+  }
+});
+
+router.post("/unBan", userMiddleware.checkModerator, async (req, res) => {
+  console.log("targetUser", req.fields);
+  console.log("logged in user", res.locals.user);
+  const user = req.fields.user;
+
+  try {
+    await UserModel.updateOne({ _id: user._id }, { banned: false });
+    res.status(200).send();
+  } catch (e) {
+    res.status(500).send();
+  }
+  // res.send("success");
 });
 
 module.exports = router;

@@ -8,15 +8,11 @@ const FileModel = mongoose.Schema({
     required: true,
     default: new Date(),
   },
-  updated_at: {
-    type: Date,
-    required: true,
-    default: new Date(),
-  },
   uploader: {
     type: ObjectId,
     required: true,
   },
+
   url: {
     type: String,
     required: true,

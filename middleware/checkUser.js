@@ -87,7 +87,6 @@ module.exports = {
       console.log("userId", userId);
       UserModel.findOne({ _id: userId })
         .then((data) => {
-          console.log(data);
           if (data.confirmed !== true) {
             res.status(403).send();
           } else if (data.role === "banned") {

@@ -113,6 +113,20 @@ router.get("/latest", async (req, res) => {
     .sort({ published_at: "desc" });
   res.send(articles);
 });
+router.get("/admin/latest", userMiddleware.checkModerator, async (req, res) => {
+  let limit = req.fields.limit;
+  let skip = req.fields.skip;
+  let category = req.fields.category;
+  let categorySub = req.fields.categorySub;
+  let articles = await ArticleModel.find()
+    .limit(limit)
+    .skip(skip)
+    .populate("categories")
+    .populate("thumbnail")
+    .populate({ path: "author", populate: "avatar" })
+    .sort({ published_at: "desc" });
+  res.send(articles);
+});
 router.get("/featured", async (req, res) => {
   let limit = req.fields.limit;
   let skip = req.fields.skip;
@@ -519,7 +533,7 @@ router.get("/subscribed", userMiddleware.checkLoggedIn, async (req, res) => {
   try {
     let articles = await ArticleModel.find({
       author: { $in: user.following },
-      published_at: { $exists: true },
+      published_at: { $exists: true, $ne: null },
     })
       .populate("thumbnail")
       .populate("categories")
@@ -601,7 +615,7 @@ router.get("/byTag/:tag", userMiddleware.checkConfirmed, async (req, res) => {
     let articles = await ArticleModel.find({
       tags: { $elemMatch: { $eq: tag } },
 
-      published_at: { $exists: true },
+      published_at: { $exists: true, $ne: null },
     })
       .populate("thumbnail", "url")
       .populate("categories", "name slug")
