@@ -232,7 +232,7 @@ router.get("/findById/:id", async (req, res) => {
     author = new ObjectId(req.query.author);
   }
   if (req.query.role) {
-    role = new ObjectId(req.query.role);
+    role = req.query.role;
   }
   let filter = {
     $and: [
