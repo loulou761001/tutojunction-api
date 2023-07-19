@@ -229,7 +229,7 @@ router.get("/findById/:id", async (req, res) => {
   let author = null;
   console.log(req.query.author);
   if (req.query.author) {
-    author = new ObjectId(req.query.author._id);
+    author = new ObjectId(req.query.author);
   }
   try {
     let article = await ArticleModel.findOne({
