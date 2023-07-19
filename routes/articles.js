@@ -227,23 +227,32 @@ router.get("/byTime", async (req, res) => {
 router.get("/findById/:id", async (req, res) => {
   const skip = req.query.skip;
   let author = null;
+  let role = null;
   console.log(req.query.author);
   if (req.query.author) {
     author = new ObjectId(req.query.author);
   }
+  if (req.query.role) {
+    role = new ObjectId(req.query.role);
+  }
+  let filter = {
+    $and: [
+      { _id: req.params.id },
+      {
+        $or: [
+          { published_at: { $exists: true, $ne: null } },
+          { author: { $eq: author } },
+        ],
+      },
+    ],
+  };
+  if (role === "admin" || role === "moderator") {
+    filter = {
+      $and: [{ _id: req.params.id }],
+    };
+  }
   try {
-    let article = await ArticleModel.findOne({
-      $and: [
-        { _id: req.params.id },
-        {
-          $or: [
-            { published_at: { $exists: true, $ne: null } },
-            { author: { $eq: author } },
-            { role: { $in: ["admin", "moderator"] } },
-          ],
-        },
-      ],
-    })
+    let article = await ArticleModel.findOne(filter)
       .populate("categories", "name slug")
       .populate("thumbnail", "url")
       .populate({
