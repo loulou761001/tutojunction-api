@@ -239,6 +239,7 @@ router.get("/findById/:id", async (req, res) => {
           $or: [
             { published_at: { $exists: true, $ne: null } },
             { author: { $eq: author } },
+            { role: { $in: ["admin", "moderator"] } },
           ],
         },
       ],
