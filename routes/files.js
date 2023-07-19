@@ -19,6 +19,7 @@ const UserModel = require("../models/User");
 const FileModel = require("../models/File");
 
 router.post("/", userMiddleware.checkConfirmed, async (req, res) => {
+  console.log(req.files);
   const options = {
     use_filename: true,
     unique_filename: false,
