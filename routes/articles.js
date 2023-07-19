@@ -136,7 +136,7 @@ router.get("/admin/", userMiddleware.checkModerator, async (req, res) => {
       .populate("categories")
       .populate("thumbnail")
       .populate({ path: "author", populate: "avatar" })
-      .sort({ published_at: "desc" });
+      .sort({ created_at: "desc" });
     res.send(articles);
   } catch (e) {
     console.log(e);
