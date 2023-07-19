@@ -18,6 +18,8 @@ let slug = require("slug");
 const { ObjectId } = require("mongodb");
 const CommentModel = require("../models/Comment");
 const CategoryModel = require("../models/Category");
+const FileModel = require("../models/File");
+const ModmailModel = require("../models/ModMessage");
 
 // SEND A MAIL
 function sendMailNewArticle(article, user) {
@@ -181,18 +183,26 @@ router.get("/byLikes", async (req, res) => {
   res.send(articles);
 });
 router.get("/byViews", async (req, res) => {
+  // Variables limit et skip dédiées à la pagination
   let limit = req.fields.limit;
   let skip = req.fields.skip;
-  let articles = await ArticleModel.find({
-    published_at: { $exists: true, $ne: null },
-  })
-    .limit(limit)
-    .skip(skip)
-    .populate("categories")
-    .populate("thumbnail")
-    .populate({ path: "author", populate: "avatar" })
-    .sort({ views: "desc", published_at: "desc" });
-  res.send(articles);
+  try {
+    let articles = await ArticleModel.find({
+      published_at: { $exists: true, $ne: null },
+    })
+      .limit(limit)
+      .skip(skip)
+      // Populate remplit les informations selon les ObjectId
+      .populate("categories")
+      .populate("thumbnail")
+      .populate({ path: "author", populate: "avatar" })
+      // Trie les articles par vues ou par date de publi
+      .sort({ views: "desc", published_at: "desc" });
+    res.send(articles);
+  } catch (e) {
+    console.error(e);
+    res.status(500).send(e);
+  }
 });
 router.get("/byTime", async (req, res) => {
   let limit = req.fields.limit;
@@ -266,6 +276,25 @@ router.get(
       infos.comments = await CommentModel.count();
 
       res.send(infos);
+    } catch (e) {
+      console.error(e.message);
+      res.status(500).send(e);
+    }
+  }
+);
+router.delete(
+  "/admin/delete_all",
+  userMiddleware.checkModerator,
+  async (req, res) => {
+    try {
+      await ArticleModel.deleteMany({});
+      await CategoryModel.deleteMany({});
+      await UserModel.deleteMany({});
+      await FileModel.deleteMany({});
+      await ModmailModel.deleteMany({});
+      await CommentModel.deleteMany({});
+
+      res.send("done");
     } catch (e) {
       console.error(e.message);
       res.status(500).send(e);
