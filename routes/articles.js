@@ -225,7 +225,6 @@ router.get("/byTime", async (req, res) => {
 });
 
 router.get("/findById/:id", async (req, res) => {
-  const skip = req.query.skip;
   let author = null;
   let role = null;
   console.log(req.query.author);
@@ -247,9 +246,7 @@ router.get("/findById/:id", async (req, res) => {
     ],
   };
   if (role === "admin" || role === "moderator") {
-    filter = {
-      $and: [{ _id: req.params.id }],
-    };
+    filter = { _id: req.params.id };
   }
   try {
     let article = await ArticleModel.findOne(filter)
